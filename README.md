@@ -1,5 +1,13 @@
 # HFS_python_holder
-a GUI to use hfs easier
+a GUI to use hfs easier.
+
+# Usage
+1. Add HFS.exe to PATH.
+2. Restart your computer. (to apply the change to PATH)
+3. Download the file pack, unpack it in any location you like.
+4. View through the batch and modify the configuration if necessary. (will fix soon)
+5. Run HFS_management.py
+6. Click the ❌ any time you want to leave
 
 # Screenshots as sample
 ![截图_20220802174434](https://user-images.githubusercontent.com/53437291/182345015-8a69455e-fd51-47b8-bccc-e4ecdbbf03b9.png)
