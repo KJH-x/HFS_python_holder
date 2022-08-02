@@ -1,4 +1,4 @@
-# HFS
+# HFS_management
 # encoding=utf-8
 '''
 Filename :HFS_managememt.py
@@ -202,7 +202,7 @@ if __name__ == "__main__":
         mh = tk.Tk()
         mh.title("HFS")
         mh.iconbitmap(
-            default=u"E:\\STATIC\\Picture\\component\\Tk_Hide.ico")
+            default=u".\\Tk_Hide.ico")
         mh.configure(bg="#000000")
         mh.protocol("WM_DELETE_WINDOW", QUIT)
 
