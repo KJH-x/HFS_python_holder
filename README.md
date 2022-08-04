@@ -16,21 +16,13 @@ a GUI script to use hfs easier.
 | os | pyperclip |
 | subprocess | win32gui |
 | sys | win32con |
-| traceback | ctypes |
-|  | tkinter |
-|  | qrcode |
-|  | PIL |
+| traceback | qrcode |
+| ctypes |  |
+| tkinter |  |
+| PIL |  |
 
-> 打开你的命令行复制粘贴以下代码以快速安装 
-> Start your command prompt and paste codes below to intstall them directly
 > ```batch
-> pip install pyperclip
-> pip install win32gui
-> pip install win32con
-> pip install ctypes
-> pip install tkinter
-> pip install qrcode
-> pip install PIL
+> pip install -r requirement.txt
 > ```
 
 ## 运行截图 / Screenshots as sample
