@@ -17,7 +17,7 @@ a GUI script to use hfs easier.
 | subprocess | win32gui |
 | sys | win32con |
 | traceback | qrcode |
-| ctypes |  |
+| ctypes | IPy |
 | tkinter |  |
 | PIL |  |
 
