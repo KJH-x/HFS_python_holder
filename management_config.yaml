@@ -1,0 +1,74 @@
+# HFS_management config
+HFS:
+  parameter: "--port 8080"
+
+GUI:
+  skip_ip_scan: False
+  preset_ip:
+    1: about:blank
+    2: about:blank
+    3: about:blank
+  port: 8080
+  # ONLY IF you are NOT using LAN and disable DHCP you can modify options above
+  # Remember NOT to add the port number at the end of the address
+
+  ip_sort_rule:
+    # In default condition (len,false),shorter ip (usually ipv4) will come to the top
+    # key: len
+    reverse: False
+
+  browser:
+  # You should check its availablility in your console by entering "start xxx about:blank" if modified
+  # It's STRONGLY suggested to fill it with COMPLETE path to the browser
+  # leave a space to open by default browser
+
+  color:
+    # a pair of "" is necesary for HEX color value
+    # RGB RRGGBB RRGGBBAA proper_color_name are acceptable
+    copy_url_button_bg: "#964246"
+    copy_url_button_fg: white
+    browser_button_bg: "#CC0"
+    browser_button_fg: white
+    QR_url_button_bg: "#27978e"
+    QR_url_button_fg: white
+    mamagement_button_bg: "#3c78aa"
+    mamagement_button_fg: white
+    log_button_bg: "#002036"
+    log_button_fg: white
+    QR_paste_button_bg: "#3ed802"
+    QR_paste_button_fg: white
+    Quit_button_bg: "#f03a17"
+    Quit_button_fg: white
+    QR_url_bg: white
+    QR_url_fg: "#27978e"
+    QR_paste_bg: white
+    QR_paste_fg: "#3ed802"
+
+  font:
+    url_bar: "Times New Roman"
+    command_bar: Arial
+
+backstage_console:
+  title: HFS
+  console_color: F0
+  # check the color mode in cmd.exe
+  console_loc:
+    x: 300
+    y: 200
+    w: 300
+    h: 200
+  hide_console_immediately: True
+  close_console_when_quite: True
+
+log_file:
+  log_level: 0
+  # 0: No log
+  # 1: Error
+  # 2: Event
+  # 3: Detailed
+  size_limit: 0
+  # Acceptable: number+ K / M / G
+  # Use 0 to avoid cleanup
+
+advanced:
+  debug_mode: False
