@@ -1,11 +1,11 @@
-# HFS_management
+# using yaml
 # encoding=utf-8
 '''
 Filename :HFS_managememt.py
 Description :N/A
-Datatime :2022/08/02
+Datatime :2022/08/05
 Author :KJH
-Version :v6.5
+Version :v0.6.7
 '''
 import os
 import subprocess as sp
@@ -19,6 +19,8 @@ import tkinter as tk
 import qrcode
 from PIL import Image, ImageTk, ImageDraw
 from qrcode.image.pil import PilImage
+import yaml
+import IPy
 
 
 class CustomImage(PilImage):
@@ -41,12 +43,24 @@ class CustomImage(PilImage):
         self._idr.rectangle(box, fill=self.fillcolor)
 
 
-def start_HFS(port: int):
-    global start_time, http_list
-    msg_count = 0
+def read_config():
+    yaml_path = ".\\management_config.yaml"
+    try:
+        # 打开文件
+        with open(yaml_path, "r", encoding="utf-8") as config_file:
+            data = yaml.load(config_file, Loader=yaml.FullLoader)
+            return data
+    except:
+        print_exc()
+        input()
+        exit()
 
+
+def start_HFS(parameter: str):
+    global start_time, url_list, config
+    msg_count = 0
     # start HFS via another batch
-    command = "python.exe \".\\HFS_host.py\" --port "+str(port)
+    command = "python.exe \".\\HFS host2.py\" "+parameter
     hfs = sp.Popen(command, shell=True, stdout=sp.PIPE, stdin=sp.PIPE)
 
     # read console feedback, get right ip
@@ -61,14 +75,16 @@ def start_HFS(port: int):
             else:
                 break
         elif "- http" in reply:
-            http_list.append(reply.replace("- ", ""))
+            url_list.append(reply.replace("- ", ""))
         else:
             continue
         msg_count += 1
 
     # sort the ips, let ipv4 address be the first
-    http_list.sort(key=len)
-    print(http_list)
+    url_list.sort(key=len,
+                  reverse=config["GUI"]["ip_sort_rule"]["reverse"]
+                  )
+    print(url_list)
     return
 
 
@@ -85,20 +101,24 @@ def picture_resize(img: Image, width: int, height: int):
     return img.resize((width, height), Image.ANTIALIAS)
 
 
-def side_widget_control(flag=0, content=""):
+def checkip(address: str):
+    try:
+        version = IPy.IP(address).version()
+        return version == 4 or version == 6 or version == "about:blank"
+    except Exception:
+        return print_exc()
+
+
+def side_widget(flag=0, content=""):
     global mh, image, photo, QRslot, last_content
     QRslot.grid_remove
     mh.geometry("")
     content = pyperclip.paste() if content == ""else content
-    # printThis()
-    ctv = (content == last_content)
-    vgs = QRslot.winfo_viewable()
     if content == last_content and QRslot.winfo_viewable():
         QRslot.grid_forget()
         return
     if flag == 1:
         # get content
-
         if content == "":
             return
         else:
@@ -137,7 +157,7 @@ def generateQR(content="", pic_name="", fg_color="black", bg_color="white"):
 def ADD(name="", row=0, column=0, command=..., colspan=1, fg="white", bg="#3c78aa"):
     global mh
     return tk.Button(text=name, command=command,
-                     master=mh, font=FONT_STYLE_1, fg=fg, bg=bg).grid(row=row, column=column, columnspan=colspan, sticky="WE")
+                     master=mh, font=font_style_1, fg=fg, bg=bg).grid(row=row, column=column, columnspan=colspan, sticky="WE")
 
 
 def copy(content=""):
@@ -156,79 +176,123 @@ def show_console():
     return
 
 
-def open_in_browser(url=""):
-    global HFS_port
-    url = "http://localhost:"+str(HFS_port)+"/~/admin/"if url == "" else url
-    command = "start chrome.exe "+url
+def browse(url=""):
+    global hfs_port, config
+    browser = "" if config["GUI"]["browser"] is None \
+        else str(config["GUI"]["browser"])
+    url = "http://localhost:"+str(hfs_port) + \
+        "/~/admin/"if url == "" else url
+    command = "start "+browser+" "+url
     sp.Popen(command, shell=True, creationflags=sp.CREATE_NEW_CONSOLE)
     return
 
 
 def QUIT():
-    global mh
-    command="taskkill /im hfs.exe"
-    sp.Popen(command, shell=True, creationflags=sp.CREATE_NEW_CONSOLE)
+    global mh, config
+    if config["backstage_console"]["close_console_when_quite"]:
+        command = "taskkill /im hfs.exe"
+        sp.Popen(command, shell=True, creationflags=sp.CREATE_NEW_CONSOLE)
     return mh.destroy()
-
 
 
 if __name__ == "__main__":
     # Variable preset
-    FONT_STYLE_1 = ("汉真广标", 9)
-    FONT_STYLE_2 = ("等线", 8)
     image = photo = None
     console_status = False
     start_time = ""
-    http_list = []
     pic_name = ".\\temp.png"
-    HFS_port = 8080
+    url_list = []
+    last_content = ""
 
-    # Console preparation
     os.system("chcp 65001")
     os.chdir(sys.path[0])
 
-    os.system("title HFS")
-    os.system("color F0")
-    win32gui.SetWindowPos(win32gui.FindWindow(
-        0, "HFS"), win32con.HWND_TOPMOST, 300,
-        200, 300, 200, win32con.SWP_SHOWWINDOW)
-
     try:
+        config = read_config()
+        font_style_1 = (str(config["GUI"]["font"]["command_bar"]), 8)
+        font_style_2 = (str(config["GUI"]["font"]["url_bar"]), 8)
+        if config["GUI"]["skip_ip_scan"]:
+            for ip in config["GUI"]["preset_ip"]:
+                if checkip(str(ip)):
+                    url_list.append("http://"+ip)
+            skip_scan = True
+        else:
+            skip_scan = False
+        HFS_parameter = str(config["HFS"]["parameter"])
+        hfs_port = config["GUI"]["port"]
+
+        # Console preparation
+        if not config["advanced"]["debug_mode"]:
+            os.system("title "+str(config["backstage_console"]["title"]))
+            os.system(
+                "color "+str(config["backstage_console"]["console_color"]))
+
+            win32gui.SetWindowPos(
+                win32gui.FindWindow(0, "HFS"),
+                win32con.HWND_TOPMOST,
+                int(config["backstage_console"]["console_loc"]["x"]),
+                int(config["backstage_console"]["console_loc"]["y"]),
+                int(config["backstage_console"]["console_loc"]["w"]),
+                int(config["backstage_console"]["console_loc"]["h"]),
+                win32con.SWP_SHOWWINDOW
+            )
+
+        # correct_display_dpi
         ctypes.windll.shcore.SetProcessDpiAwareness(1)
+
         # Start main program
-        start_HFS(HFS_port)
+        start_HFS(HFS_parameter)
 
         # Tkinter preparation
         mh = tk.Tk()
         mh.title("HFS")
-        mh.iconbitmap(
-            default=u".\\Tk_Hide.ico")
+        mh.iconbitmap(default=".\\HM.ico")
         mh.configure(bg="#000000")
         mh.protocol("WM_DELETE_WINDOW", QUIT)
 
-        # Widget
+        # tkinter Widget
         # IPbox and qrcode generator
+        urlbg = str(config["GUI"]["color"]["copy_url_button_bg"])
+        urlfg = str(config["GUI"]["color"]["copy_url_button_fg"])
+        brbg = str(config["GUI"]["color"]["browser_button_bg"])
+        brfg = str(config["GUI"]["color"]["browser_button_fg"])
+        sqrbg = str(config["GUI"]["color"]["QR_url_button_bg"])
+        sqrfg = str(config["GUI"]["color"]["QR_url_button_fg"])
+        mbbg = str(config["GUI"]["color"]["mamagement_button_bg"])
+        mbfg = str(config["GUI"]["color"]["mamagement_button_fg"])
+        logbg = str(config["GUI"]["color"]["log_button_bg"])
+        logfg = str(config["GUI"]["color"]["log_button_fg"])
+        qrpbg = str(config["GUI"]["color"]["QR_paste_button_bg"])
+        qrpfg = str(config["GUI"]["color"]["QR_paste_button_fg"])
+        quitbg = str(config["GUI"]["color"]["Quit_button_bg"])
+        quitfg = str(config["GUI"]["color"]["Quit_button_fg"])
+
+        qrcurlbg = str(config["GUI"]["color"]["QR_url_bg"])
+        qrcurlfg = str(config["GUI"]["color"]["QR_url_fg"])
+        qrcpbg = str(config["GUI"]["color"]["QR_paste_bg"])
+        qrcpfg = str(config["GUI"]["color"]["QR_paste_fg"])
+
         buttons = [[
-            tk.Button(mh, text=http_list[0], bg="#964246", fg="white",
-                      font=FONT_STYLE_2, command=lambda:copy(http_list[0])),
-            tk.Button(mh, text=http_list[1], bg="#964246", fg="white",
-                      font=FONT_STYLE_2, command=lambda:copy(http_list[1])),
-            tk.Button(mh, text=http_list[2], bg="#964246", fg="white",
-                      font=FONT_STYLE_2, command=lambda:copy(http_list[2]))
+            tk.Button(mh, text=url_list[0], bg=urlbg, fg=urlfg,
+                      font=font_style_2, command=lambda:copy(url_list[0])),
+            tk.Button(mh, text=url_list[1], bg=urlbg, fg=urlfg,
+                      font=font_style_2, command=lambda:copy(url_list[1])),
+            tk.Button(mh, text=url_list[2], bg=urlbg, fg=urlfg,
+                      font=font_style_2, command=lambda:copy(url_list[2]))
         ], [
-            tk.Button(mh, text="🚀", bg="#CCCC00", fg="white",
-                      font=FONT_STYLE_1, command=lambda:open_in_browser(url=http_list[0])),
-            tk.Button(mh, text="🚀", bg="#CCCC00", fg="white",
-                      font=FONT_STYLE_1, command=lambda:open_in_browser(url=http_list[1])),
-            tk.Button(mh, text="🚀", bg="#CCCC00", fg="white",
-                      font=FONT_STYLE_1, command=lambda:open_in_browser(url=http_list[2]))
+            tk.Button(mh, text="🚀", bg=brbg, fg=brfg,
+                      font=font_style_1, command=lambda:browse(url=url_list[0])),
+            tk.Button(mh, text="🚀", bg=brbg, fg=brfg,
+                      font=font_style_1, command=lambda:browse(url=url_list[1])),
+            tk.Button(mh, text="🚀", bg=brbg, fg=brfg,
+                      font=font_style_1, command=lambda:browse(url=url_list[2]))
         ], [
-            tk.Button(mh, text="QR", bg="#27978e", fg="white",
-                      font=FONT_STYLE_1, command=lambda:side_widget_control(content=http_list[0])),
-            tk.Button(mh, text="QR", bg="#27978e", fg="white",
-                      font=FONT_STYLE_1, command=lambda:side_widget_control(content=http_list[1])),
-            tk.Button(mh, text="QR", bg="#27978e", fg="white",
-                      font=FONT_STYLE_1, command=lambda:side_widget_control(content=http_list[2]))
+            tk.Button(mh, text="QR", bg=sqrbg, fg=sqrfg,
+                      font=font_style_1, command=lambda:side_widget(content=url_list[0])),
+            tk.Button(mh, text="QR", bg=sqrbg, fg=sqrfg,
+                      font=font_style_1, command=lambda:side_widget(content=url_list[1])),
+            tk.Button(mh, text="QR", bg=sqrbg, fg=sqrfg,
+                      font=font_style_1, command=lambda:side_widget(content=url_list[2]))
         ]]
         col_mapping = [0, 2, 3]
         for col in range(0, len(buttons)):
@@ -237,29 +301,37 @@ if __name__ == "__main__":
                                        sticky="NWSE", columnspan=2 if col == 0 else 1)
 
         # control button
-        ADD("Open Management", 3, 0, open_in_browser)
-        ADD("LOG", 3, 1, show_console, bg="#002036")
-        tk.Button(mh, text="▶", bg="#3ed802", fg="white",
-                  font=FONT_STYLE_1, command=lambda: side_widget_control(flag=1)).grid(row=3, column=2, sticky="WNE")
-        ADD("❌", 3, 3, QUIT, bg="#f03a17")
+        ADD("Open Management", 3, 0, browse, bg=mbbg, fg=mbfg)
+        ADD("LOG", 3, 1, show_console, bg=logbg, fg=logfg)
+        tk.Button(mh, text="▶",
+                  bg=qrpbg, fg=qrpfg, font=font_style_1,
+                  command=lambda: side_widget(flag=1)
+                  ).grid(row=3, column=2, sticky="WNE")
+        ADD("❌", 3, 3, QUIT, bg=quitbg, fg=quitfg)
 
         # QR slot
         QRslot = tk.Label(mh, height=50)
-        QRslot.grid(row=0, column=4, rowspan=4, sticky="WNS")
-        QRslot.grid_remove()
-        last_content = ""
+        # QRslot.grid(row=0, column=4, rowspan=4, sticky="WNS")
+        # QRslot.grid_remove()
 
         # hide console
-        win32gui.ShowWindow(win32gui.FindWindow(
-            0, "HFS"), win32con.HIDE_WINDOW)
+        if config["backstage_console"]["hide_console_immediately"] \
+                or not config["advanced"]["debug_mode"]:
+            win32gui.ShowWindow(
+                win32gui.FindWindow(0, "HFS"),
+                win32con.HIDE_WINDOW
+            )
 
         # display window
         mh.mainloop()
 
         # end
-        win32gui.ShowWindow(win32gui.FindWindow(
-            0, "HFS"), win32con.SHOW_OPENWINDOW)
-        exit()
+        if config["backstage_console"]["close_console_when_quite"]\
+                or not config["advanced"]["debug_mode"]:
+            win32gui.ShowWindow(
+                win32gui.FindWindow(0, "HFS"),
+                win32con.SHOW_OPENWINDOW
+            )
 
     except Exception or KeyboardInterrupt:
         print_exc()
