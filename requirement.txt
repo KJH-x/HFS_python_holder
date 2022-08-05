@@ -1,3 +1,4 @@
 pyperclip>=1.8.2
 pywin32>=302
 qrcode>=7.3.1
+IPy>=1.1
