@@ -3,9 +3,9 @@
 '''
 Filename :HFS host.py
 Description :N/A
-Datatime :2022/05/21
+Datatime :2022/08/05
 Author :KJH
-Version :v1.0
+Version :v1.1
 '''
 import os
 import sys
@@ -14,11 +14,12 @@ os.system("chcp 65001")
 os.chdir(sys.path[0])
 try:
     para = sys.argv
-    # print(para)
-    if len(para) > 1 and para[1] == "--port" and para[2].isdigit():
-        hfs_port = str(para[2])
-        # print(hfs_port)
-        os.system("hfs --port "+hfs_port)
+    if len(para) >= 1:
+        para.pop(0)
+        parameter = " ".join(para)
+    print(parameter)
+    os.system("hfs "+parameter)
+
 except Exception or KeyboardInterrupt:
     print_exc()
     input()
