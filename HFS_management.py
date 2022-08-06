@@ -60,7 +60,7 @@ def start_HFS(parameter: str):
     global start_time, url_list, config
     msg_count = 0
     # start HFS via another batch
-    command = "python.exe \".\\HFS host2.py\" "+parameter
+    command = "python.exe \".\\HFS_host.py\" "+parameter
     hfs = sp.Popen(command, shell=True, stdout=sp.PIPE, stdin=sp.PIPE)
 
     # read console feedback, get right ip
