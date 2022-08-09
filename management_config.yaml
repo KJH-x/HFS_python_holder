@@ -3,6 +3,7 @@ HFS:
   parameter: "--port 8080"
 
 GUI:
+  name: HFS_M
   skip_ip_scan: False
   preset_ip:
     1: about:blank
@@ -48,8 +49,11 @@ GUI:
     url_bar: "Times New Roman"
     command_bar: Arial
 
+  size:
+    qrsize: 120
+
 backstage_console:
-  title: HFS
+  title: HFS_B
   console_color: F0
   # check the color mode in cmd.exe
   console_loc:
@@ -60,15 +64,21 @@ backstage_console:
   hide_console_immediately: True
   close_console_when_quite: True
 
-log_file:
-  log_level: 0
-  # 0: No log
-  # 1: Error
-  # 2: Event
-  # 3: Detailed
-  size_limit: 0
-  # Acceptable: number+ K / M / G
-  # Use 0 to avoid cleanup
+log:
+  version: 1
+  formatters:
+    custom:
+      format: "%(asctime)s %(filename)s:%(lineno)04d %(levelname)s %(message)s"
+      datefmt: "%Y-%M-%d %H:%M:%S"
+  handlers:
+    file:
+      class: logging.FileHandler
+      level: DEBUG
+      formatter: custom
+      filename: ./HM.log
+  root:
+    level: INFO
+    handlers: [file]
 
 advanced:
   debug_mode: False
