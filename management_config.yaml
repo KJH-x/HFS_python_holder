@@ -46,11 +46,11 @@ GUI:
     QR_paste_fg: "#3ed802"
 
   font:
-    url_bar: "Times New Roman"
-    command_bar: Arial
+    url_bar: !!python/tuple ["Arial bold", 10]
+    command_bar: !!python/tuple ["Arial Rounded MT Bold", 10]
 
   size:
-    qrsize: 120
+    qrsize: 110
 
 backstage_console:
   title: HFS_B
@@ -72,10 +72,13 @@ log:
       datefmt: "%Y-%M-%d %H:%M:%S"
   handlers:
     file:
-      class: logging.FileHandler
+      class: logging.handlers.RotatingFileHandler
       level: DEBUG
       formatter: custom
       filename: ./HM.log
+      encoding: utf-8
+      maxBytes: 524288
+      backupCount: 20
   root:
     level: INFO
     handlers: [file]
