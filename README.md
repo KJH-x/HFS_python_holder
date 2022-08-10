@@ -5,9 +5,9 @@ a GUI script to use hfs easier.
 1. Add HFS.exe to PATH.
 2. Restart your computer. (to apply the change to PATH)
 3. Download the file pack, unpack it in any location you like.
-4. View through the batch and modify the configuration if necessary. (will be replaced by config.yaml soon)
-5. Run HFS_management.py
-6. Click the ❌ any time you want to leave.
+4. Run HFS_management.py
+5. Click the ❌ any time you want to leave.
+6. Change the config if you want. Required a restart to apply changes
 
 ## 此脚本需要的模组 / Python module required
 ~~(你当然需要先安装python / Of course you need python to ues)~~
