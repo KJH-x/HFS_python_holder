@@ -19,7 +19,7 @@ a GUI script to use hfs easier.
 | sys | win32con |
 | traceback | qrcode |
 | ctypes | IPy |
-| tkinter |  |
+| tkinter | pyyaml |
 | PIL |  |
 
 > ```batch
