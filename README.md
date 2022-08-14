@@ -1,5 +1,6 @@
 # HFS_python_holder README
 a GUI script to use hfs easier.
+推荐使用Recommended to use Python3.9.x
 
 ## 使用方法 / Usage
 1. Add HFS.exe to PATH.
