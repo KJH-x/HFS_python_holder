@@ -1,9 +1,9 @@
 # encoding=utf-8
 '''
 Filename :HFS_managememt.py
-Datatime :2022/08/10
+Datatime :2022/08/14
 Author :KJH
-Version :v0.7.0
+Version :v0.7.1
 '''
 import pyperclip
 
@@ -283,10 +283,9 @@ if __name__ == "__main__":
         logging.info("Parameter=" + str(HFS_parameter))
 
         # Console preparation
+        console_title = str(config["backstage_console"]["title"])
+        console_color = str(config["backstage_console"]["console_color"])
         if not config["advanced"]["debug_mode"]:
-
-            console_title = str(config["backstage_console"]["title"])
-            console_color = str(config["backstage_console"]["console_color"])
 
             os.system("title " + console_title)
             logging.info("Console name set:" + console_title)
