@@ -5,10 +5,14 @@ HFS:
 GUI:
   name: HFS_M
   skip_ip_scan: False
-  preset_ip:
+  preset_ip_list:
     1: about:blank
     2: about:blank
     3: about:blank
+  exclude_ip_list:
+    1: None
+    2: None
+    3: None
   port: 8080
   # ONLY IF you are NOT using LAN and disable DHCP you can modify options above
   # Remember NOT to add the port number at the end of the address
@@ -50,7 +54,7 @@ GUI:
     command_bar: !!python/tuple ["Arial Rounded MT Bold", 10]
 
   size:
-    qrsize: 110
+    qrsize: 130
 
 backstage_console:
   title: HFS_B
@@ -68,12 +72,12 @@ log:
   version: 1
   formatters:
     custom:
-      format: "%(asctime)s %(filename)s:%(lineno)04d %(levelname)s %(message)s"
-      datefmt: "%Y-%M-%d %H:%M:%S"
+      format: "%(asctime)s %(levelname)s %(message)s"
+      datefmt: "%Y-%m-%d %H:%M:%S"
   handlers:
     file:
       class: logging.handlers.RotatingFileHandler
-      level: DEBUG
+      level: INFO
       formatter: custom
       filename: ./HM.log
       encoding: utf-8
