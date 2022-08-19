@@ -1,10 +1,11 @@
 # encoding=utf-8
-'''
+"""
 Filename :HFS_managememt.py
-Datatime :2022/08/14
+Datatime :2022/08/19
 Author :KJH
-Version :v0.7.1
-'''
+Version :v0.7.5
+"""
+from time import sleep
 import pyperclip
 
 import os
@@ -13,6 +14,7 @@ import subprocess
 from traceback import print_exc
 import win32gui
 import win32con
+import inspect
 
 import ctypes
 import tkinter as tk
@@ -47,9 +49,12 @@ class CustomImage(PilImage):
 
 
 def read_config():
+    """
+    加载yaml配置文件
+    """
     yaml_path = ".\\management_config.yaml"
     try:
-        # 打开文件
+        # open config
         with open(yaml_path, "r", encoding="utf-8") as config_file:
             data = yaml.load(config_file, Loader=yaml.FullLoader)
             return data
@@ -58,62 +63,86 @@ def read_config():
         exit()
 
 
-def start_HFS(parameter: str):
-    global start_time, url_list, config
-    msg_count = 0
-    # start HFS via another batch
-    command = "python.exe \".\\HFS_host.py\" "+parameter
-    hfs = subprocess.Popen(command, shell=True,
-                           stdout=subprocess.PIPE, stdin=subprocess.PIPE)
-    logging.info("host batch started")
+def get_ips():
+    """从控制台获取本机可用ip地址"""
+    logIO(1)
+    global ipexclude, url_list, hfs_port
 
-    # read console feedback, get working ip
-    # NEED UPDATE USING IPCONFIG
-    if not skip_scan:
-        while True:
-            reply = hfs.stdout.readline().strip().decode()
-            if "started" in reply:
-                start_time = reply.replace("started ", "")
-            elif "network" in reply[0:10]:
-                if "Ethernet" in reply or "WLAN" in reply:
-                    continue
-                else:
-                    break
-            elif "- http" in reply:
-                url_list.append(reply.replace("- ", ""))
-                logging.info("Appending:"+reply)
-            else:
-                continue
-            msg_count += 1
+    os.system("ipconfig | clip")
+    ipconfig = list(set(pyperclip.paste().splitlines()))
+    for line in ipconfig:
+        # print(line)
+        if "Address" in line and "%21" not in line:
+            potential = line.split(": ", 1)
+            url_list.append("http://"+str(potential[1])+":"+str(hfs_port))
 
-    # sort the ips, let ipv4 address be the first
+    for item in ipexclude:
+        try:
+            url_list.remove(ipexclude[item]) \
+                if ipexclude[item] != "about:blank" else 1
+        except ValueError:
+            logging.warning(str(ipexclude[item])+" is not in list")
+            continue
     url_list.sort(
         key=len,
         reverse=config["GUI"]["ip_sort_rule"]["reverse"]
     )
     logging.info(url_list)
-    return
+
+    return logIO(0)
+
+
+def start_HFS(parameter: str):
+    """
+    启动HFS主程序
+    """
+    logIO(1)
+    global start_time, url_list, config, skip_scan
+
+    # start HFS using hfs_host.py
+    command = "python.exe \".\\HFS_host.py\" "+parameter
+    hfs = subprocess.Popen(
+        command,
+        shell=True,
+        stdout=subprocess.PIPE,
+        stdin=subprocess.PIPE,
+    )
+    logging.info("host batch started")
+
+    if not skip_scan:
+        get_ips()
+
+    return logIO(0)
 
 
 def picture_resize(img: Image, width: int, height: int):
-    ''' 
+    """ 
     按给定矩形框的最小比例，对一个img对象进行等比缩放
-    '''
+    """
+    logIO(1)
     w, h = img.size
     f1 = width/w
     f2 = height/h
     factor = min([f1, f2])
     width = int(w*factor)
     height = int(h*factor)
+    logIO(0)
     return img.resize((width, height), Image.Resampling.LANCZOS)
 
 
 def checkip(address: str):
+    """确认是否为正确的IP地址，返回真或假"""
+    logIO(1)
     version = IPy.IP(address).version()
+    logIO(0)
     return version == 4 or version == 6 or address == "about:blank"
 
 
 def side_widget(flag=0, content=""):
+    """
+    处理QR小组件的显示
+    """
+    logIO(1)
     global mh, image, photo, QRslot, last_content
 
     QRslot.grid_remove
@@ -166,66 +195,112 @@ def side_widget(flag=0, content=""):
     os.chdir(sys.path[0])
     os.system("del .\\temp.png")
     logging.info("temp image deleted")
+    logIO(0)
     return
 
 
 def generateQR(content="", pic_name="", fg_color="black", bg_color="white"):
+    """
+    生成二维码
+    """
+    logIO(1)
     # make qr image
     qr = qrcode.QRCode(border=0)
     qr.add_data(content)
     qr.make(True)
-    img = qr.make_image(CustomImage, fill_color=fg_color, back_color=bg_color)
+    img = qr.make_image(
+        CustomImage,
+        fill_color=fg_color, back_color=bg_color
+    )
     img.save(pic_name)
     logging.info("temp image created and saved")
+    logIO(0)
     return
 
 
-def ADD(name="", row=0, column=0, command=..., colspan=1, fg="white", bg="#3c78aa"):
+def grid_button(name: str, row: int, column: int,
+                command: str, fg: str, bg: str,
+                colspan=1):
+    """
+    新建通用按钮，并grid到网格中
+    """
+    logIO(1)
     global mh
-    return tk.Button(text=name, command=command,
-                     master=mh, font=font_style_1, fg=fg, bg=bg).grid(row=row, column=column, columnspan=colspan, sticky="WE")
+
+    button_object = tk.Button(
+        text=name, command=command, master=mh,
+        font=font_style_1, fg=fg, bg=bg
+    )
+    button_object.grid(
+        row=row, column=column,
+        columnspan=colspan, sticky="WE"
+    )
+    logIO(0)
+    return button_object
 
 
 def copy(content=""):
+    """
+    复制到剪贴板
+    """
+    logIO(1)
     pyperclip.copy(content)
     logging.info("content \"%s\" copied to clipboard" % content)
+    logIO(0)
     return
 
 
 def show_console():
+    """
+    处理控制台的显示与隐藏（而不是最小化）
+    """
+    logIO(1)
     global console_status, console_title
+
     logging.info("console status before adjust:%s" % console_status)
     if not console_status:
         win32gui.ShowWindow(
             win32gui.FindWindow(0, console_title),
             win32con.SHOW_OPENWINDOW
         )
-
     else:
         win32gui.ShowWindow(
             win32gui.FindWindow(0, console_title),
             win32con.HIDE_WINDOW
         )
-
     console_status = not console_status
     logging.info("console status after adjust:%s" % console_status)
+    logIO(0)
     return
 
 
 def browse(url=""):
+    """
+    用浏览器打开指定网址"""
+    logIO(1)
     global hfs_port, config
+
     browser = "" if config["GUI"]["browser"] is None \
         else str(config["GUI"]["browser"])
-    url = "http://localhost:"+str(hfs_port) + \
-        "/~/admin/"if url == "" else url
+    url = "http://localhost:"+str(hfs_port) + "/~/admin/"\
+        if url == "" else url
+
     command = "start "+browser+" "+url
     logging.info("browse command:%s" % command)
-    subprocess.Popen(command, shell=True,
-                     creationflags=subprocess.CREATE_NEW_CONSOLE)
+    subprocess.Popen(
+        command,
+        shell=True,
+        creationflags=subprocess.CREATE_NEW_CONSOLE
+    )
+    logIO(0)
     return
 
 
 def QUIT():
+    """
+    退出按钮，同时绑定于窗体的关闭键
+    """
+    logIO(1)
     global mh, config
     if config["backstage_console"]["close_console_when_quite"]:
         command = "taskkill /im hfs.exe"
@@ -234,7 +309,19 @@ def QUIT():
         logging.info("HFS.exe killed successfully")
     mh.destroy()
     logging.info("tkinter window destroyed")
+    logIO(0)
     return
+
+
+def logIO(status: bool):
+    try:
+        namelist = inspect.getouterframes(inspect.currentframe())
+        name = namelist[1].function
+        logging.debug(5*"-" + ("I: " if status else "O: ") + name + 5*"-")
+        return True
+    except Exception as e:
+        logging.error(e)
+        return False
 
 
 if __name__ == "__main__":
@@ -251,6 +338,7 @@ if __name__ == "__main__":
         os.chdir(sys.path[0])
 
         config = read_config()
+        ipexclude = config["GUI"]["exclude_ip_list"]
 
         logConfig.dictConfig(config["log"])
         logging.info("Enviroment Preperation Done")
@@ -270,7 +358,7 @@ if __name__ == "__main__":
         logging.info("Font set:"+str(font_style_1)+str(font_style_2))
 
         if config["GUI"]["skip_ip_scan"]:
-            for ip in config["GUI"]["preset_ip"]:
+            for ip in config["GUI"]["preset_ip_list"]:
                 if checkip(str(ip)):
                     url_list.append("http://"+ip)
             skip_scan = True
@@ -376,14 +464,14 @@ if __name__ == "__main__":
         logging.info("url, browse, (qr for url) set")
 
         # control button
-        ADD("Open Management", 3, 0, browse, bg=mbbg, fg=mbfg)
-        ADD("LOG", 3, 1, show_console, bg=logbg, fg=logfg)
+        grid_button("Open Management", 3, 0, browse, bg=mbbg, fg=mbfg)
+        grid_button("LOG", 3, 1, show_console, bg=logbg, fg=logfg)
         copy_button = tk.Button(
             mh, text="▶", bg=qrpbg, fg=qrpfg, font=font_style_1,
             command=lambda: side_widget(flag=1)
         )
         copy_button.grid(row=3, column=2, sticky="WNE")
-        ADD("❌", 3, 3, QUIT, bg=quitbg, fg=quitfg)
+        grid_button("❌", 3, 3, QUIT, bg=quitbg, fg=quitfg)
         logging.info("control button set")
 
         # QR slot
