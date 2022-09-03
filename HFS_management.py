@@ -1,9 +1,9 @@
 # encoding=utf-8
 """
 Filename :HFS_managememt.py
-Datatime :2022/08/19
+Datatime :2022/09/03
 Author :KJH
-Version :v0.7.5
+Version :v0.7.8
 """
 from time import sleep
 import pyperclip
@@ -72,10 +72,18 @@ def get_ips():
     ipconfig = list(set(pyperclip.paste().splitlines()))
     for line in ipconfig:
         # print(line)
-        if "Address" in line and "%21" not in line:
-            potential = line.split(": ", 1)
-            url_list.append("http://"+str(potential[1])+":"+str(hfs_port))
-
+        if "Address" in line and "%" not in line:
+            potential = line.split(": ", 1)[1]
+            v = checkip(str(potential))
+            if v == 4:
+                url_list.append(f"http://{potential}:{str(hfs_port)}")
+            elif v == 6:
+                url_list.append(f"http://[{potential}]:{str(hfs_port)}")
+            else:
+                pass
+    if len(url_list) < 3:
+        for i in range(3-len(url_list)):
+            url_list.append("about:blank")
     for item in ipexclude:
         try:
             url_list.remove(ipexclude[item]) \
@@ -124,8 +132,8 @@ def picture_resize(img: Image, width: int, height: int):
     f1 = width/w
     f2 = height/h
     factor = min([f1, f2])
-    width = int(w*factor)
-    height = int(h*factor)
+    width = int(w * factor)
+    height = int(h * factor)
     logIO(0)
     return img.resize((width, height), Image.Resampling.LANCZOS)
 
@@ -133,9 +141,11 @@ def picture_resize(img: Image, width: int, height: int):
 def checkip(address: str):
     """确认是否为正确的IP地址，返回真或假"""
     logIO(1)
-    version = IPy.IP(address).version()
-    logIO(0)
-    return version == 4 or version == 6 or address == "about:blank"
+    try:
+        logIO(0)
+        return IPy.IP(address).version()
+    except ValueError:
+        return address == "about:blank"
 
 
 def side_widget(flag=0, content=""):
@@ -233,7 +243,7 @@ def grid_button(name: str, row: int, column: int,
     )
     button_object.grid(
         row=row, column=column,
-        columnspan=colspan, sticky="WE"
+        columnspan=colspan, sticky="WNE"
     )
     logIO(0)
     return button_object
@@ -357,17 +367,23 @@ if __name__ == "__main__":
 
         logging.info("Font set:"+str(font_style_1)+str(font_style_2))
 
+        hfs_port = config["GUI"]["port"]
         if config["GUI"]["skip_ip_scan"]:
             for ip in config["GUI"]["preset_ip_list"]:
-                if checkip(str(ip)):
-                    url_list.append("http://"+ip)
+                v = checkip(str(ip))
+                if v == 4:
+                    url_list.append(f"http://{ip}:{str(hfs_port)}")
+                elif v == 6:
+                    url_list.append(f"http://[{ip}]:{str(hfs_port)}")
+            if len(url_list) < 3:
+                for i in range(3-len(url_list)):
+                    url_list.append("about:blank")
             skip_scan = True
         else:
             skip_scan = False
         logging.info("Skip_scan:" + str(skip_scan))
 
         HFS_parameter = str(config["HFS"]["parameter"])
-        hfs_port = config["GUI"]["port"]
         logging.info("Parameter=" + str(HFS_parameter))
 
         # Console preparation
