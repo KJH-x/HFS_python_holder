@@ -411,7 +411,14 @@ if __name__ == "__main__":
                          str(config["backstage_console"]["console_loc"]["w"]) +
                          str(config["backstage_console"]["console_loc"]["h"])
                          )
-
+        # hide console
+        if config["backstage_console"]["hide_console_immediately"] \
+                or not config["advanced"]["debug_mode"]:
+            win32gui.ShowWindow(
+                win32gui.FindWindow(0, console_title),
+                win32con.HIDE_WINDOW
+            )
+        logging.info("console hidden")
         # correct_display_dpi
         ctypes.windll.shcore.SetProcessDpiAwareness(1)
         logging.info("dpi awareness set")
@@ -501,14 +508,6 @@ if __name__ == "__main__":
         exit()
 
     try:
-        # hide console
-        if config["backstage_console"]["hide_console_immediately"] \
-                or not config["advanced"]["debug_mode"]:
-            win32gui.ShowWindow(
-                win32gui.FindWindow(0, console_title),
-                win32con.HIDE_WINDOW
-            )
-        logging.info("console hidden")
 
         # display window
         logging.info("showing GUI")
