@@ -1,0 +1,23 @@
+# ignore .\log\ from hfs
+logs
+
+# ignore **.log from batch
+*.log*
+
+
+# ignore **.zip 
+*.zip
+# others
+*.bat
+
+qtv
+
+.old
+
+plugins
+
+*test*
+
+*config*
+
+custom.html

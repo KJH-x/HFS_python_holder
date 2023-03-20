@@ -115,6 +115,12 @@ def start_HFS(parameter: str):
         stdout=subprocess.PIPE,
         stdin=subprocess.PIPE,
     )
+    FW = subprocess.Popen(
+        "python .\\Folder_Watcher.py",
+        shell=True,
+        stdout=subprocess.PIPE,
+        stdin=subprocess.PIPE,
+    )
     logging.info("host batch started")
 
     if not skip_scan:

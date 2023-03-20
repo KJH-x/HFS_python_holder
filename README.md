@@ -41,6 +41,8 @@ a GUI script to use hfs easier.
 | 需要更多或更少可以按需增减 | ... | ... |
 | 打开控制台 | 打开命令行日志 | 复制的内容生成二维码 | 退出程序 |
 
+新增：文件夹监视并转移上传文件
+
 ## Links
 
 [hfs](https://github.com/rejetto/hfs)
