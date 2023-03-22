@@ -14,6 +14,7 @@ import subprocess
 from traceback import print_exc
 import win32gui
 import win32con
+import win32process
 import inspect
 
 import ctypes
@@ -48,7 +49,7 @@ class CustomImage(PilImage):
         self._idr.rectangle(box, fill=self.fillcolor)
 
 
-def read_config():
+def read_yaml():
     """
     加载yaml配置文件
     """
@@ -63,9 +64,9 @@ def read_config():
         exit()
 
 
-def get_ips():
+def get_ip_pool():
     """从控制台获取本机可用ip地址"""
-    logIO(1)
+    call_log(1)
     global ipexclude, url_list, hfs_port
 
     os.system("ipconfig | clip")
@@ -74,7 +75,7 @@ def get_ips():
         # print(line)
         if "Address" in line and "%" not in line:
             potential = line.split(": ", 1)[1]
-            v = checkip(str(potential))
+            v = check_ip(str(potential))
             if v == 4:
                 url_list.append(f"http://{potential}:{str(hfs_port)}")
             elif v == 6:
@@ -97,58 +98,64 @@ def get_ips():
     )
     logging.info(url_list)
 
-    return logIO(0)
+    call_log(0)
+    return
 
 
-def start_HFS(parameter: str):
+def start_HFS(parameter: str) -> tuple[subprocess.Popen, subprocess.Popen]:
     """
     启动HFS主程序
     """
-    logIO(1)
+    call_log(1)
     global start_time, url_list, config, skip_scan
 
     # start HFS using hfs_host.py
-    command = "python.exe \".\\HFS_host.py\" "+parameter
-    hfs = subprocess.Popen(
-        command,
-        shell=True,
-        stdout=subprocess.PIPE,
-        stdin=subprocess.PIPE,
+    # command = "python.exe \".\\HFS_host.py\" "+parameter
+    # HFS = subprocess.Popen(
+    #     command,
+    #     shell=True,
+    #     stdout=subprocess.PIPE,
+    #     stdin=subprocess.PIPE,
+    # )
+    HFS = subprocess.Popen(
+        "hfs "+parameter,
+        creationflags=subprocess.CREATE_NEW_CONSOLE
     )
+    logging.info("HFS.exe started")
+
     FW = subprocess.Popen(
         "python .\\Folder_Watcher.py",
-        shell=True,
-        stdout=subprocess.PIPE,
-        stdin=subprocess.PIPE,
+        creationflags=subprocess.CREATE_NEW_CONSOLE
     )
-    logging.info("host batch started")
+    logging.info("Folder Watcher started")
 
     if not skip_scan:
-        get_ips()
+        get_ip_pool()
 
-    return logIO(0)
+    call_log(0)
+    return (HFS, FW)
 
 
 def picture_resize(img: Image, width: int, height: int):
     """ 
     按给定矩形框的最小比例，对一个img对象进行等比缩放
     """
-    logIO(1)
+    call_log(1)
     w, h = img.size
     f1 = width/w
     f2 = height/h
     factor = min([f1, f2])
     width = int(w * factor)
     height = int(h * factor)
-    logIO(0)
+    call_log(0)
     return img.resize((width, height), Image.Resampling.LANCZOS)
 
 
-def checkip(address: str):
+def check_ip(address: str):
     """确认是否为正确的IP地址，返回真或假"""
-    logIO(1)
+    call_log(1)
     try:
-        logIO(0)
+        call_log(0)
         return IPy.IP(address).version()
     except ValueError:
         return address == "about:blank"
@@ -158,7 +165,7 @@ def side_widget(flag=0, content=""):
     """
     处理QR小组件的显示
     """
-    logIO(1)
+    call_log(1)
     global mh, image, photo, QRslot, last_content
 
     QRslot.grid_remove
@@ -178,14 +185,14 @@ def side_widget(flag=0, content=""):
             return
         else:
             if flag == 1:
-                generateQR(
+                generate_QRcode(
                     content=content, pic_name=pic_name,
                     fg_color=qrcpfg, bg_color=qrcpbg
                 )
                 logging.info("copy content qr generated fg:%s bg:%s" %
                              (qrcpfg, qrcpbg))
             elif flag == 0:
-                generateQR(
+                generate_QRcode(
                     content=content, pic_name=pic_name,
                     fg_color=qrcurlfg, bg_color=qrcurlbg
                 )
@@ -211,15 +218,15 @@ def side_widget(flag=0, content=""):
     os.chdir(sys.path[0])
     os.system("del .\\temp.png")
     logging.info("temp image deleted")
-    logIO(0)
+    call_log(0)
     return
 
 
-def generateQR(content="", pic_name="", fg_color="black", bg_color="white"):
+def generate_QRcode(content="", pic_name="", fg_color="black", bg_color="white"):
     """
     生成二维码
     """
-    logIO(1)
+    call_log(1)
     # make qr image
     qr = qrcode.QRCode(border=0)
     qr.add_data(content)
@@ -230,7 +237,7 @@ def generateQR(content="", pic_name="", fg_color="black", bg_color="white"):
     )
     img.save(pic_name)
     logging.info("temp image created and saved")
-    logIO(0)
+    call_log(0)
     return
 
 
@@ -240,7 +247,7 @@ def grid_button(name: str, row: int, column: int,
     """
     新建通用按钮，并grid到网格中
     """
-    logIO(1)
+    call_log(1)
     global mh
 
     button_object = tk.Button(
@@ -251,49 +258,57 @@ def grid_button(name: str, row: int, column: int,
         row=row, column=column,
         columnspan=colspan, sticky="WNE"
     )
-    logIO(0)
+    call_log(0)
     return button_object
 
 
-def copy(content=""):
+def copy_to_clipboard(content=""):
     """
     复制到剪贴板
     """
-    logIO(1)
+    call_log(1)
     pyperclip.copy(content)
     logging.info("content \"%s\" copied to clipboard" % content)
-    logIO(0)
+    call_log(0)
     return
 
 
-def show_console():
+def show_console(HFS_process: subprocess.Popen, FW_process: subprocess.Popen, GUI_hwnd: int):
     """
     处理控制台的显示与隐藏（而不是最小化）
     """
-    logIO(1)
-    global console_status, console_title
+    call_log(1)
 
-    logging.info("console status before adjust:%s" % console_status)
-    if not console_status:
-        win32gui.ShowWindow(
-            win32gui.FindWindow(0, console_title),
-            win32con.SHOW_OPENWINDOW
-        )
+
+    HFS_hwnd = get_window_by_pid(HFS_process)
+    if win32gui.IsWindowVisible(HFS_hwnd):
+        # Window is visible, hide it
+        win32gui.ShowWindow(HFS_hwnd, win32con.HIDE_WINDOW)
+        logging.info("Hide HFS console")
     else:
-        win32gui.ShowWindow(
-            win32gui.FindWindow(0, console_title),
-            win32con.HIDE_WINDOW
-        )
-    console_status = not console_status
-    logging.info("console status after adjust:%s" % console_status)
-    logIO(0)
+        win32gui.ShowWindow(HFS_hwnd, win32con.SHOW_OPENWINDOW)
+        logging.info("Show HFS console")
+
+    FW_hwnd = get_window_by_pid(FW_process)
+    if win32gui.IsWindowVisible(FW_hwnd):
+        # Window is visible, hide it
+        win32gui.ShowWindow(FW_hwnd, win32con.HIDE_WINDOW)
+        logging.info("Hide FW console")
+    else:
+        win32gui.ShowWindow(FW_hwnd, win32con.SHOW_OPENWINDOW)
+        logging.info("Show FW console")
+    
+    win32gui.SetForegroundWindow(GUI_hwnd)
+    logging.info("GUI brought to top")
+
+    call_log(0)
     return
 
 
-def browse(url=""):
+def browser_open(url=""):
     """
     用浏览器打开指定网址"""
-    logIO(1)
+    call_log(1)
     global hfs_port, config
 
     browser = "" if config["GUI"]["browser"] is None \
@@ -302,34 +317,54 @@ def browse(url=""):
         if url == "" else url
 
     command = "start "+browser+" "+url
-    logging.info("browse command:%s" % command)
+    logging.info(f"browse command:{command}")
     subprocess.Popen(
         command,
         shell=True,
         creationflags=subprocess.CREATE_NEW_CONSOLE
     )
-    logIO(0)
+    call_log(0)
     return
 
 
-def QUIT():
+def get_window_by_pid(process: subprocess.Popen) -> int:
+    window = 0
+    windows = []
+
+    def enum_windows_callback(hwnd: int, lParam):
+        if win32process.GetWindowThreadProcessId(hwnd)[1] == process.pid:
+            windows.append(hwnd)
+    win32gui.EnumWindows(enum_windows_callback, None)
+    if len(windows) > 0:
+        # If multiple windows are found with the same PID, just use the first one
+        window = windows[0]
+        return window
+    else:
+        return 0
+
+
+def teminate_main(HFS_process: subprocess.Popen, FW_process: subprocess.Popen):
     """
     退出按钮，同时绑定于窗体的关闭键
     """
-    logIO(1)
+    call_log(1)
     global mh, config
+
     if config["backstage_console"]["close_console_when_quite"]:
-        command = "taskkill /im hfs.exe"
-        subprocess.Popen(command, shell=True,
-                         creationflags=subprocess.CREATE_NEW_CONSOLE)
+        HFS_process.kill()
         logging.info("HFS.exe killed successfully")
+
+    FW_process.kill()
+    logging.info("Folder Watcher killed successfully")
+
     mh.destroy()
     logging.info("tkinter window destroyed")
-    logIO(0)
+
+    call_log(0)
     return
 
 
-def logIO(status: bool):
+def call_log(status: bool):
     try:
         namelist = inspect.getouterframes(inspect.currentframe())
         name = namelist[1].function
@@ -344,7 +379,6 @@ if __name__ == "__main__":
     try:
         # Variable preset
         image = photo = None
-        console_status = False
         start_time = ""
         pic_name = ".\\temp.png"
         url_list = []
@@ -353,7 +387,7 @@ if __name__ == "__main__":
         os.system("chcp 65001")
         os.chdir(sys.path[0])
 
-        config = read_config()
+        config = read_yaml()
         ipexclude = config["GUI"]["exclude_ip_list"]
 
         logConfig.dictConfig(config["log"])
@@ -376,7 +410,7 @@ if __name__ == "__main__":
         hfs_port = config["GUI"]["port"]
         if config["GUI"]["skip_ip_scan"]:
             for ip in config["GUI"]["preset_ip_list"]:
-                v = checkip(str(ip))
+                v = check_ip(str(ip))
                 if v == 4:
                     url_list.append(f"http://{ip}:{str(hfs_port)}")
                 elif v == 6:
@@ -423,15 +457,16 @@ if __name__ == "__main__":
         logging.info("dpi awareness set")
 
         # Start main program
-        start_HFS(HFS_parameter)
+        (HFS, FW) = start_HFS(HFS_parameter)
         logging.info("start_HFS execute done")
 
         # Tkinter preparation
         mh = tk.Tk()
+        GUI = mh.winfo_id()
         mh.title(config["GUI"]["name"])
         mh.iconbitmap(default=".\\HM.ico")
         mh.configure(bg="#000000")
-        mh.protocol("WM_DELETE_WINDOW", QUIT)
+        mh.protocol("WM_DELETE_WINDOW", lambda: teminate_main(HFS, FW))
         logging.info("tkinter window basic config set")
 
         # tkinter Widget
@@ -458,18 +493,18 @@ if __name__ == "__main__":
 
         buttons = [[
             tk.Button(mh, text=url_list[0], bg=urlbg, fg=urlfg,
-                      font=font_style_2, command=lambda:copy(url_list[0])),
+                      font=font_style_2, command=lambda:copy_to_clipboard(url_list[0])),
             tk.Button(mh, text=url_list[1], bg=urlbg, fg=urlfg,
-                      font=font_style_2, command=lambda:copy(url_list[1])),
+                      font=font_style_2, command=lambda:copy_to_clipboard(url_list[1])),
             tk.Button(mh, text=url_list[2], bg=urlbg, fg=urlfg,
-                      font=font_style_2, command=lambda:copy(url_list[2]))
+                      font=font_style_2, command=lambda:copy_to_clipboard(url_list[2]))
         ], [
             tk.Button(mh, text="🚀", bg=brbg, fg=brfg,
-                      font=font_style_1, command=lambda:browse(url=url_list[0])),
+                      font=font_style_1, command=lambda:browser_open(url=url_list[0])),
             tk.Button(mh, text="🚀", bg=brbg, fg=brfg,
-                      font=font_style_1, command=lambda:browse(url=url_list[1])),
+                      font=font_style_1, command=lambda:browser_open(url=url_list[1])),
             tk.Button(mh, text="🚀", bg=brbg, fg=brfg,
-                      font=font_style_1, command=lambda:browse(url=url_list[2]))
+                      font=font_style_1, command=lambda:browser_open(url=url_list[2]))
         ], [
             tk.Button(mh, text="QR", bg=sqrbg, fg=sqrfg,
                       font=font_style_1, command=lambda:side_widget(content=url_list[0])),
@@ -486,14 +521,16 @@ if __name__ == "__main__":
         logging.info("url, browse, (qr for url) set")
 
         # control button
-        grid_button("Open Management", 3, 0, browse, bg=mbbg, fg=mbfg)
-        grid_button("LOG", 3, 1, show_console, bg=logbg, fg=logfg)
+        grid_button("Open Management", 3, 0, browser_open, bg=mbbg, fg=mbfg)
+        grid_button("LOG", 3, 1, lambda: show_console(
+            HFS, FW, GUI), bg=logbg, fg=logfg)
         copy_button = tk.Button(
             mh, text="▶", bg=qrpbg, fg=qrpfg, font=font_style_1,
             command=lambda: side_widget(flag=1)
         )
         copy_button.grid(row=3, column=2, sticky="WNE")
-        grid_button("❌", 3, 3, QUIT, bg=quitbg, fg=quitfg)
+        grid_button("❌", 3, 3, lambda: teminate_main(
+            HFS, FW), bg=quitbg, fg=quitfg)
         logging.info("control button set")
 
         # QR slot

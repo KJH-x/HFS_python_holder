@@ -82,13 +82,15 @@ if __name__ == "__main__":
     config = read_config(".\\FW_config.json")
     target_folder = config["target_folder"]
     archive_folder = config["archive_folder"]
+    os.system(f"chcp 65001>nul")
+    os.system(f"title Folder watcher @{target_folder}>nul")
     observer = Observer()
 
     move_handler = FileCreateHandler()
 
     observer.schedule(move_handler, target_folder, True)
     observer.start()
-    print(f"[INFO][{report_time()}] 监控已启动")
+    print(f"[INFO][{report_time()}] 监控已启动@{target_folder}")
 
     try:
         while True:
