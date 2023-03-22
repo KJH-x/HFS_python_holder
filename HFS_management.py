@@ -109,14 +109,6 @@ def start_HFS(parameter: str) -> tuple[subprocess.Popen, subprocess.Popen]:
     call_log(1)
     global start_time, url_list, config, skip_scan
 
-    # start HFS using hfs_host.py
-    # command = "python.exe \".\\HFS_host.py\" "+parameter
-    # HFS = subprocess.Popen(
-    #     command,
-    #     shell=True,
-    #     stdout=subprocess.PIPE,
-    #     stdin=subprocess.PIPE,
-    # )
     HFS = subprocess.Popen(
         "hfs "+parameter,
         creationflags=subprocess.CREATE_NEW_CONSOLE
@@ -421,20 +413,20 @@ if __name__ == "__main__":
             skip_scan = True
         else:
             skip_scan = False
-        logging.info("Skip_scan:" + str(skip_scan))
+        logging.info(f"Skip_scan:{str(skip_scan)}")
 
         HFS_parameter = str(config["HFS"]["parameter"])
-        logging.info("Parameter=" + str(HFS_parameter))
+        logging.info(f"Parameter={str(HFS_parameter)}")
 
         # Console preparation
         console_title = str(config["backstage_console"]["title"])
         console_color = str(config["backstage_console"]["console_color"])
         if not config["advanced"]["debug_mode"]:
 
-            os.system("title " + console_title)
-            logging.info("Console name set:" + console_title)
-            os.system("color " + console_color)
-            logging.info("Console color set:" + console_color)
+            os.system(f"title {console_title}")
+            logging.info(f"Console name set:{console_title}")
+            os.system(f"color {console_color}")
+            logging.info(f"Console color set:{console_color}")
 
             win32gui.SetWindowPos(
                 win32gui.FindWindow(0, console_title),

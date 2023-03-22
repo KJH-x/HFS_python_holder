@@ -21,3 +21,5 @@ plugins
 *config*
 
 custom.html
+
+HFS_host.py
