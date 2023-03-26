@@ -23,3 +23,5 @@ plugins
 custom.html
 
 HFS_host.py
+
+counters.yaml

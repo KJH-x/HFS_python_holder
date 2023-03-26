@@ -5,7 +5,6 @@ Datatime :2022/09/03
 Author :KJH
 Version :v0.7.8
 """
-from time import sleep
 import pyperclip
 
 import os
@@ -49,7 +48,7 @@ class CustomImage(PilImage):
         self._idr.rectangle(box, fill=self.fillcolor)
 
 
-def read_yaml():
+def read_yaml() -> dict:
     """
     加载yaml配置文件
     """
@@ -58,16 +57,16 @@ def read_yaml():
         # open config
         with open(yaml_path, "r", encoding="utf-8") as config_file:
             data = yaml.load(config_file, Loader=yaml.FullLoader)
-            return data
+            return dict(data)
     except:
         input(print_exc())
         exit()
 
 
-def get_ip_pool():
+def get_ip_pool(http_port: int) -> list:
     """从控制台获取本机可用ip地址"""
     call_log(1)
-    global ipexclude, url_list, hfs_port
+    global ipexclude, url_list
 
     os.system("ipconfig | clip")
     ipconfig = list(set(pyperclip.paste().splitlines()))
@@ -77,9 +76,9 @@ def get_ip_pool():
             potential = line.split(": ", 1)[1]
             v = check_ip(str(potential))
             if v == 4:
-                url_list.append(f"http://{potential}:{str(hfs_port)}")
+                url_list.append(f"http://{potential}:{str(http_port)}")
             elif v == 6:
-                url_list.append(f"http://[{potential}]:{str(hfs_port)}")
+                url_list.append(f"http://[{potential}]:{str(http_port)}")
             else:
                 pass
     if len(url_list) < 3:
@@ -96,18 +95,21 @@ def get_ip_pool():
         key=len,
         reverse=config["GUI"]["ip_sort_rule"]["reverse"]
     )
+    print(f"Availble url list:\n")
+    for url in url_list:
+        print(f" - {url}")
     logging.info(url_list)
 
     call_log(0)
-    return
+    return url_list
 
 
-def start_HFS(parameter: str) -> tuple[subprocess.Popen, subprocess.Popen]:
+def start_dependency(parameter: str, http_port: int) -> tuple[subprocess.Popen, subprocess.Popen]:
     """
-    启动HFS主程序
+    启动HFS主程序和文件夹监听
     """
     call_log(1)
-    global start_time, url_list, config, skip_scan
+    global start_time, url_list, skip_scan
 
     HFS = subprocess.Popen(
         "hfs "+parameter,
@@ -122,7 +124,7 @@ def start_HFS(parameter: str) -> tuple[subprocess.Popen, subprocess.Popen]:
     logging.info("Folder Watcher started")
 
     if not skip_scan:
-        get_ip_pool()
+        get_ip_pool(http_port)
 
     call_log(0)
     return (HFS, FW)
@@ -153,15 +155,16 @@ def check_ip(address: str):
         return address == "about:blank"
 
 
-def side_widget(flag=0, content=""):
+def toggle_QRcode(parent: tk.Tk, target: tk.Label, flag=0, content=""):
     """
     处理QR小组件的显示
     """
     call_log(1)
-    global mh, image, photo, QRslot, last_content
+    global image, photo, last_content, qr_style
 
-    QRslot.grid_remove
-    mh.geometry("")
+    qrcurlbg, qrcurlfg, qrcpbg, qrcpfg, qr_box_size = qr_style
+    target.grid_remove
+    parent.geometry("")
     logging.info("side widget cleared")
 
     content = pyperclip.paste() if content == ""else content
@@ -171,8 +174,8 @@ def side_widget(flag=0, content=""):
         return
     else:
 
-        if content == last_content and QRslot.winfo_viewable():
-            QRslot.grid_forget()
+        if content == last_content and target.winfo_viewable():
+            target.grid_forget()
             logging.info("Same content detected, Hiding side widget")
             return
         else:
@@ -194,15 +197,13 @@ def side_widget(flag=0, content=""):
                 logging.error("qr parameter error with flag:%d content:%s" %
                               (flag, content))
 
-    image = Image.open(pic_name)
-    w_box = h_box = config["GUI"]["size"]["qrsize"]
-    image = picture_resize(image, w_box, h_box)
-    logging.info("image resized to %d" % config["GUI"]["size"]["qrsize"])
+    image = picture_resize(Image.open(pic_name), qr_box_size, qr_box_size)
+    logging.info(f"image resized to {qr_box_size}")
 
     photo = ImageTk.PhotoImage(image)
-    QRslot.configure(image=photo)
-    QRslot.grid(row=0, column=4, rowspan=4, sticky="WNS")
-    mh.geometry("")
+    target.configure(image=photo)
+    target.grid(row=0, column=4, rowspan=4, sticky="WNS")
+    parent.geometry("")
     logging.info("GUI adjusted")
 
     last_content = content
@@ -233,17 +234,17 @@ def generate_QRcode(content="", pic_name="", fg_color="black", bg_color="white")
     return
 
 
-def grid_button(name: str, row: int, column: int,
+def grid_button(tk_window: tk.Tk, name: str, row: int, column: int,
                 command: str, fg: str, bg: str,
                 colspan=1):
     """
     新建通用按钮，并grid到网格中
     """
     call_log(1)
-    global mh
 
     button_object = tk.Button(
-        text=name, command=command, master=mh,
+        master=tk_window,
+        text=name, command=command,
         font=font_style_1, fg=fg, bg=bg
     )
     button_object.grid(
@@ -265,32 +266,37 @@ def copy_to_clipboard(content=""):
     return
 
 
-def show_console(HFS_process: subprocess.Popen, FW_process: subprocess.Popen, GUI_hwnd: int):
+def toggle_visibility(HFS_process: subprocess.Popen, FW_process: subprocess.Popen, GUI_hwnd: int, CSW: int):
     """
     处理控制台的显示与隐藏（而不是最小化）
     """
     call_log(1)
 
-
     HFS_hwnd = get_window_by_pid(HFS_process)
-    if win32gui.IsWindowVisible(HFS_hwnd):
+    FW_hwnd = get_window_by_pid(FW_process)
+    CSW_hwnd = CSW
+
+    if win32gui.IsWindowVisible(HFS_hwnd) or win32gui.IsWindowVisible(FW_hwnd) or win32gui.IsWindowVisible(CSW_hwnd):
         # Window is visible, hide it
         win32gui.ShowWindow(HFS_hwnd, win32con.HIDE_WINDOW)
         logging.info("Hide HFS console")
+        win32gui.ShowWindow(FW_hwnd, win32con.HIDE_WINDOW)
+        logging.info("Hide FW console")
+        win32gui.ShowWindow(CSW_hwnd, win32con.HIDE_WINDOW)
+        logging.info("Hide self console")
+
     else:
         win32gui.ShowWindow(HFS_hwnd, win32con.SHOW_OPENWINDOW)
         logging.info("Show HFS console")
-
-    FW_hwnd = get_window_by_pid(FW_process)
-    if win32gui.IsWindowVisible(FW_hwnd):
-        # Window is visible, hide it
-        win32gui.ShowWindow(FW_hwnd, win32con.HIDE_WINDOW)
-        logging.info("Hide FW console")
-    else:
         win32gui.ShowWindow(FW_hwnd, win32con.SHOW_OPENWINDOW)
         logging.info("Show FW console")
-    
-    win32gui.SetForegroundWindow(GUI_hwnd)
+        win32gui.ShowWindow(CSW_hwnd, win32con.SHOW_OPENWINDOW)
+        logging.info("Show self console")
+
+    try:
+        win32gui.SetForegroundWindow(GUI_hwnd)
+    except:
+        pass
     logging.info("GUI brought to top")
 
     call_log(0)
@@ -340,16 +346,16 @@ def teminate_main(HFS_process: subprocess.Popen, FW_process: subprocess.Popen):
     退出按钮，同时绑定于窗体的关闭键
     """
     call_log(1)
-    global mh, config
+    global tk_window, config, console_policy_2
 
-    if config["backstage_console"]["close_console_when_quite"]:
+    if console_policy_2:
         HFS_process.kill()
         logging.info("HFS.exe killed successfully")
 
     FW_process.kill()
     logging.info("Folder Watcher killed successfully")
 
-    mh.destroy()
+    tk_window.destroy()
     logging.info("tkinter window destroyed")
 
     call_log(0)
@@ -367,52 +373,22 @@ def call_log(status: bool):
         return False
 
 
-if __name__ == "__main__":
+def tk_setup(config: dict) -> list[tk.Tk, int, int, int, tk.Label]:
+    global font_style_1, font_style_2, skip_scan
     try:
-        # Variable preset
-        image = photo = None
-        start_time = ""
-        pic_name = ".\\temp.png"
-        url_list = []
-        last_content = ""
-
-        os.system("chcp 65001")
-        os.chdir(sys.path[0])
-
-        config = read_yaml()
-        ipexclude = config["GUI"]["exclude_ip_list"]
-
-        logConfig.dictConfig(config["log"])
-        logging.info("Enviroment Preperation Done")
-
-    except Exception:
-        print_exc()
-        input("Fatal Error...Quiting")
-        input("Issue the problem if necessary")
-        exit()
-
-    try:
-        logging.info("read config successfully")
-
-        font_style_1 = (config["GUI"]["font"]["command_bar"])
-        font_style_2 = (config["GUI"]["font"]["url_bar"])
-
         logging.info("Font set:"+str(font_style_1)+str(font_style_2))
+        http_port = config["GUI"]["port"]
 
-        hfs_port = config["GUI"]["port"]
-        if config["GUI"]["skip_ip_scan"]:
+        if skip_scan:
             for ip in config["GUI"]["preset_ip_list"]:
                 v = check_ip(str(ip))
                 if v == 4:
-                    url_list.append(f"http://{ip}:{str(hfs_port)}")
+                    url_list.append(f"http://{ip}:{str(http_port)}")
                 elif v == 6:
-                    url_list.append(f"http://[{ip}]:{str(hfs_port)}")
+                    url_list.append(f"http://[{ip}]:{str(http_port)}")
             if len(url_list) < 3:
                 for i in range(3-len(url_list)):
                     url_list.append("about:blank")
-            skip_scan = True
-        else:
-            skip_scan = False
         logging.info(f"Skip_scan:{str(skip_scan)}")
 
         HFS_parameter = str(config["HFS"]["parameter"])
@@ -420,45 +396,26 @@ if __name__ == "__main__":
 
         # Console preparation
         console_title = str(config["backstage_console"]["title"])
-        console_color = str(config["backstage_console"]["console_color"])
-        if not config["advanced"]["debug_mode"]:
 
+        if not config["advanced"]["debug_mode"]:
             os.system(f"title {console_title}")
             logging.info(f"Console name set:{console_title}")
-            os.system(f"color {console_color}")
-            logging.info(f"Console color set:{console_color}")
-
-            win32gui.SetWindowPos(
-                win32gui.FindWindow(0, console_title),
-                win32con.HWND_TOPMOST,
-                int(config["backstage_console"]["console_loc"]["x"]),
-                int(config["backstage_console"]["console_loc"]["y"]),
-                int(config["backstage_console"]["console_loc"]["w"]),
-                int(config["backstage_console"]["console_loc"]["h"]),
-                win32con.SWP_SHOWWINDOW
-            )
-            logging.info("console_top_most set:" +
-                         str(config["backstage_console"]["console_loc"]["x"]) +
-                         str(config["backstage_console"]["console_loc"]["y"]) +
-                         str(config["backstage_console"]["console_loc"]["w"]) +
-                         str(config["backstage_console"]["console_loc"]["h"])
-                         )
 
         # correct_display_dpi
         ctypes.windll.shcore.SetProcessDpiAwareness(1)
         logging.info("dpi awareness set")
 
         # Start main program
-        (HFS, FW) = start_HFS(HFS_parameter)
+        (HFS, FW) = start_dependency(HFS_parameter, http_port)
         logging.info("start_HFS execute done")
 
         # Tkinter preparation
-        mh = tk.Tk()
-        GUI = mh.winfo_id()
-        mh.title(config["GUI"]["name"])
-        mh.iconbitmap(default=".\\HM.ico")
-        mh.configure(bg="#000000")
-        mh.protocol("WM_DELETE_WINDOW", lambda: teminate_main(HFS, FW))
+        tk_window = tk.Tk()
+        GUI = tk_window.winfo_id()
+        tk_window.title(config["GUI"]["name"])
+        tk_window.iconbitmap(default=".\\HM.ico")
+        tk_window.configure(bg="#000000")
+        tk_window.protocol("WM_DELETE_WINDOW", lambda: teminate_main(HFS, FW))
         logging.info("tkinter window basic config set")
 
         # tkinter Widget
@@ -478,32 +435,27 @@ if __name__ == "__main__":
         quitbg = str(config["GUI"]["color"]["Quit_button_bg"])
         quitfg = str(config["GUI"]["color"]["Quit_button_fg"])
 
-        qrcurlbg = str(config["GUI"]["color"]["QR_url_bg"])
-        qrcurlfg = str(config["GUI"]["color"]["QR_url_fg"])
-        qrcpbg = str(config["GUI"]["color"]["QR_paste_bg"])
-        qrcpfg = str(config["GUI"]["color"]["QR_paste_fg"])
-
         buttons = [[
-            tk.Button(mh, text=url_list[0], bg=urlbg, fg=urlfg,
+            tk.Button(tk_window, text=url_list[0], bg=urlbg, fg=urlfg,
                       font=font_style_2, command=lambda:copy_to_clipboard(url_list[0])),
-            tk.Button(mh, text=url_list[1], bg=urlbg, fg=urlfg,
+            tk.Button(tk_window, text=url_list[1], bg=urlbg, fg=urlfg,
                       font=font_style_2, command=lambda:copy_to_clipboard(url_list[1])),
-            tk.Button(mh, text=url_list[2], bg=urlbg, fg=urlfg,
+            tk.Button(tk_window, text=url_list[2], bg=urlbg, fg=urlfg,
                       font=font_style_2, command=lambda:copy_to_clipboard(url_list[2]))
         ], [
-            tk.Button(mh, text="🚀", bg=brbg, fg=brfg,
+            tk.Button(tk_window, text="🚀", bg=brbg, fg=brfg,
                       font=font_style_1, command=lambda:browser_open(url=url_list[0])),
-            tk.Button(mh, text="🚀", bg=brbg, fg=brfg,
+            tk.Button(tk_window, text="🚀", bg=brbg, fg=brfg,
                       font=font_style_1, command=lambda:browser_open(url=url_list[1])),
-            tk.Button(mh, text="🚀", bg=brbg, fg=brfg,
+            tk.Button(tk_window, text="🚀", bg=brbg, fg=brfg,
                       font=font_style_1, command=lambda:browser_open(url=url_list[2]))
         ], [
-            tk.Button(mh, text="QR", bg=sqrbg, fg=sqrfg,
-                      font=font_style_1, command=lambda:side_widget(content=url_list[0])),
-            tk.Button(mh, text="QR", bg=sqrbg, fg=sqrfg,
-                      font=font_style_1, command=lambda:side_widget(content=url_list[1])),
-            tk.Button(mh, text="QR", bg=sqrbg, fg=sqrfg,
-                      font=font_style_1, command=lambda:side_widget(content=url_list[2]))
+            tk.Button(tk_window, text="QR", bg=sqrbg, fg=sqrfg,
+                      font=font_style_1, command=lambda:toggle_QRcode(tk_window, QRslot, content=url_list[0])),
+            tk.Button(tk_window, text="QR", bg=sqrbg, fg=sqrfg,
+                      font=font_style_1, command=lambda:toggle_QRcode(tk_window, QRslot, content=url_list[1])),
+            tk.Button(tk_window, text="QR", bg=sqrbg, fg=sqrfg,
+                      font=font_style_1, command=lambda:toggle_QRcode(tk_window, QRslot, content=url_list[2]))
         ]]
         col_mapping = [0, 2, 3]
         for col in range(0, len(buttons)):
@@ -513,20 +465,25 @@ if __name__ == "__main__":
         logging.info("url, browse, (qr for url) set")
 
         # control button
-        grid_button("Open Management", 3, 0, browser_open, bg=mbbg, fg=mbfg)
-        grid_button("LOG", 3, 1, lambda: show_console(
-            HFS, FW, GUI), bg=logbg, fg=logfg)
+        grid_button(tk_window, "Open Management", 3, 0,
+                    browser_open, bg=mbbg, fg=mbfg)
+        grid_button(tk_window, "Consoles", 3, 1,
+                    lambda: toggle_visibility(HFS, FW, GUI, CSW),
+                    bg=logbg, fg=logfg)
         copy_button = tk.Button(
-            mh, text="▶", bg=qrpbg, fg=qrpfg, font=font_style_1,
-            command=lambda: side_widget(flag=1)
+            tk_window, text="▶", bg=qrpbg, fg=qrpfg, font=font_style_1,
+            command=lambda: toggle_QRcode(tk_window, QRslot, flag=1)
         )
         copy_button.grid(row=3, column=2, sticky="WNE")
-        grid_button("❌", 3, 3, lambda: teminate_main(
-            HFS, FW), bg=quitbg, fg=quitfg)
+        grid_button(tk_window, "❌", 3, 3,
+                    lambda: teminate_main(HFS, FW),
+                    bg=quitbg, fg=quitfg)
         logging.info("control button set")
 
         # QR slot
-        QRslot = tk.Label(mh, height=config["GUI"]["size"]["qrsize"])
+        QRslot = tk.Label(tk_window, height=config["GUI"]["size"]["qrsize"])
+
+        return tk_window, HFS, FW, GUI, QRslot
 
     except Exception:
         logging.exception(print_exc())
@@ -535,28 +492,69 @@ if __name__ == "__main__":
         input("Issue the problem if necessary")
         exit()
 
+
+def get_console_window_handle() -> int:
+    kernel32 = ctypes.windll.kernel32
+    kernel32.GetConsoleWindow.restype = ctypes.c_void_p
+    hwnd = kernel32.GetConsoleWindow()
+    return hwnd
+
+
+if __name__ == "__main__":
+    try:
+        # Variable preset
+        image = photo = None
+        start_time = ""
+        pic_name = ".\\temp.png"
+        url_list = []
+        last_content = ""
+        # Get handle of the window
+        CSW = get_console_window_handle()
+
+        os.system("chcp 65001 > nul")
+        os.chdir(sys.path[0])
+
+        config = read_yaml()
+        ipexclude = config["GUI"]["exclude_ip_list"]
+
+        logConfig.dictConfig(config["log"])
+        logging.info("Enviroment Preperation Done")
+
+    except Exception:
+        print_exc()
+        input("Fatal Error...Quiting")
+        input("Issue the problem if necessary")
+        exit()
+
+    font_style_1 = (config["GUI"]["font"]["command_bar"])
+    font_style_2 = (config["GUI"]["font"]["url_bar"])
+    skip_scan = config["GUI"]["skip_ip_scan"]
+    console_policy_1 = config["backstage_console"]["hide_console_immediately"] or not config["advanced"]["debug_mode"]
+    console_policy_2 = config["backstage_console"]["close_console_when_quite"] or not config["advanced"]["debug_mode"]
+
+    qr_style = [config["GUI"]["color"]["QR_url_bg"],
+                config["GUI"]["color"]["QR_url_fg"],
+                config["GUI"]["color"]["QR_paste_bg"],
+                config["GUI"]["color"]["QR_paste_fg"],
+                config["GUI"]["size"]["qrsize"],
+                ]
+
+    tk_window, HFS, FW, GUI, QRslot = tk_setup(config)
+    del config
+
     try:
         # hide console
-        if config["backstage_console"]["hide_console_immediately"] \
-                or not config["advanced"]["debug_mode"]:
-            win32gui.ShowWindow(
-                win32gui.FindWindow(0, console_title),
-                win32con.HIDE_WINDOW
-            )
-        logging.info("console hidden")
+        if console_policy_1:
+            toggle_visibility(HFS, FW, GUI, CSW)
 
         # display window
         logging.info("showing GUI")
-        mh.mainloop()
+        tk_window.mainloop()
         logging.info("GUI now destroyed")
 
         # end
-        if config["backstage_console"]["close_console_when_quite"]\
-                or not config["advanced"]["debug_mode"]:
-            win32gui.ShowWindow(
-                win32gui.FindWindow(0, console_title),
-                win32con.SHOW_OPENWINDOW
-            )
+        if console_policy_2:
+            win32gui.ShowWindow(CSW, win32con.SHOW_OPENWINDOW)
         logging.info("console shown")
 
     except Exception:
