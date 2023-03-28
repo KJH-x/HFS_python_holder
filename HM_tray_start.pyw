@@ -55,8 +55,8 @@ def create_tray_icon(process: subprocess.Popen):
         '双击显示/隐藏程序框，右键功能菜单', icon_image, title="HFS_manager")
     tray_instance.menu = pystray.Menu(
         pystray.MenuItem('显示/隐藏', lambda: on_tray_click(process)),
-        # pystray.MenuItem('退出', lambda: terminate_program(
-        #     process, tray_instance))
+        pystray.MenuItem('退出托盘', lambda: terminate_program(
+            process, tray_instance))
     )
     # tray_instance.title("自动重登")
     ctypes.windll.shcore.SetProcessDpiAwareness(True)
@@ -64,7 +64,6 @@ def create_tray_icon(process: subprocess.Popen):
 
 
 def terminate_program(process: subprocess.Popen, tray_instance: pystray.Icon):
-    process.kill()
     tray_instance.stop()
 
 

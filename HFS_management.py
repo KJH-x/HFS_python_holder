@@ -235,7 +235,7 @@ def generate_QRcode(content="", pic_name="", fg_color="black", bg_color="white")
 
 
 def grid_button(tk_window: tk.Tk, name: str, row: int, column: int,
-                command: str, fg: str, bg: str,
+                command, fg: str, bg: str,
                 colspan=1):
     """
     新建通用按钮，并grid到网格中
@@ -303,18 +303,13 @@ def toggle_visibility(HFS_process: subprocess.Popen, FW_process: subprocess.Pope
     return
 
 
-def browser_open(url=""):
+def browser_open(url="",):
     """
     用浏览器打开指定网址"""
     call_log(1)
-    global hfs_port, config
+    global browser
 
-    browser = "" if config["GUI"]["browser"] is None \
-        else str(config["GUI"]["browser"])
-    url = "http://localhost:"+str(hfs_port) + "/~/admin/"\
-        if url == "" else url
-
-    command = "start "+browser+" "+url
+    command = f"start {browser} {url} > nul"
     logging.info(f"browse command:{command}")
     subprocess.Popen(
         command,
@@ -466,7 +461,7 @@ def tk_setup(config: dict) -> list[tk.Tk, int, int, int, tk.Label]:
 
         # control button
         grid_button(tk_window, "Open Management", 3, 0,
-                    browser_open, bg=mbbg, fg=mbfg)
+                    lambda: browser_open(url=f"http://localhost:{http_port}/~/admin/"), bg=mbbg, fg=mbfg)
         grid_button(tk_window, "Consoles", 3, 1,
                     lambda: toggle_visibility(HFS, FW, GUI, CSW),
                     bg=logbg, fg=logfg)
@@ -538,6 +533,8 @@ if __name__ == "__main__":
                 config["GUI"]["color"]["QR_paste_fg"],
                 config["GUI"]["size"]["qrsize"],
                 ]
+    browser = "" if config["GUI"]["browser"] is None \
+        else str(config["GUI"]["browser"])
 
     tk_window, HFS, FW, GUI, QRslot = tk_setup(config)
     del config
