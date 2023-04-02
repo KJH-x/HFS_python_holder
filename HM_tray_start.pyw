@@ -9,11 +9,12 @@ from PIL import Image
 import ctypes
 import time
 
-def toggle_window_visibility(process: subprocess.Popen):
+
+def toggle_window_visibility(handle: int):
     """
     Toggles the visibility of a window by its handle.
     """
-    handle = get_window_by_pid(process)
+
     if win32gui.IsWindowVisible(handle):
         # Window is visible, hide it
         win32gui.ShowWindow(handle, win32con.HIDE_WINDOW)
@@ -39,11 +40,15 @@ def get_window_by_pid(process: subprocess.Popen) -> int:
         return 0
 
 
-def on_tray_click(process: subprocess.Popen):
+def on_tray_click(process: subprocess.Popen, tray_instance: pystray.Icon):
     """
     Callback function that is called when the tray icon is clicked.
     """
-    toggle_window_visibility(process)
+    handle = get_window_by_pid(process)
+    if handle:
+        toggle_window_visibility(handle)
+    else:
+        terminate_program(process, tray_instance)
 
 
 def create_tray_icon(process: subprocess.Popen):
@@ -54,7 +59,8 @@ def create_tray_icon(process: subprocess.Popen):
     tray_instance = pystray.Icon(
         '双击显示/隐藏程序框，右键功能菜单', icon_image, title="HFS_manager")
     tray_instance.menu = pystray.Menu(
-        pystray.MenuItem('显示/隐藏', lambda: on_tray_click(process)),
+        pystray.MenuItem(
+            '显示/隐藏', lambda: on_tray_click(process, tray_instance)),
         pystray.MenuItem('退出托盘', lambda: terminate_program(
             process, tray_instance))
     )
@@ -76,7 +82,7 @@ if __name__ == '__main__':
     )
 
     print("wait 5s")
-    time.sleep(5)
-    toggle_window_visibility(Network_Alive)
+    time.sleep(3)
+    toggle_window_visibility(get_window_by_pid(Network_Alive))
 
     create_tray_icon(Network_Alive)
