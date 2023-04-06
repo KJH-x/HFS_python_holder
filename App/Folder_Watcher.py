@@ -79,7 +79,7 @@ TLF = "%H:%M:%S"
 
 if __name__ == "__main__":
     os.chdir(sys.path[0])
-    config = read_config(".\\FW_config.json")
+    config = read_config(".\\Config\\FW_config.json")
     target_folder = config["target_folder"]
     archive_folder = config["archive_folder"]
     os.system(f"chcp 65001>nul")
