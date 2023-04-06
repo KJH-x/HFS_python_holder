@@ -1,27 +1,13 @@
-# ignore .\log\ from hfs
-logs
-
-# ignore **.log from batch
-*.log*
-
-
-# ignore **.zip 
-*.zip
-# others
-*.bat
-
-qtv
-
 .old
+App/Runtime
 
-plugins
+*.log
 
-*test*
-
-*config*
+FW_config.json
+hfs-lang-zh.json
 
 custom.html
 
-HFS_host.py
-
+config.yaml
 counters.yaml
+config-bkup.yaml
