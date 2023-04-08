@@ -1,5 +1,6 @@
 .old
 App/Runtime
+releases
 
 *.log
 
