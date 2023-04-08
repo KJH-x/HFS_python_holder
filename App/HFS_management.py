@@ -69,11 +69,8 @@ def get_ip_pool(http_port: int) -> list:
     call_log(1)
     global ipexclude, url_list
 
-    os.system("ipconfig >.\\ipconfig.txt")
-    with open(".\\ipconfig.txt",'r') as ipconfig_file:
-        ipconfig = list(set(ipconfig_file.readlines()))
-    for line in ipconfig:
-        # print(line)
+    for line in subprocess.run(
+            'ipconfig', capture_output=True, text=True).stdout.splitlines():
         if "Address" in line and "%" not in line:
             potential = line.split(": ", 1)[1].strip()
             v = check_ip(str(potential))
@@ -101,8 +98,6 @@ def get_ip_pool(http_port: int) -> list:
     for url in url_list:
         print(f" - {url}")
     logging.info(url_list)
-
-    os.system("del .\\ipconfig.txt")
 
     call_log(0)
     return url_list
