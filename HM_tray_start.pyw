@@ -88,7 +88,7 @@ if __name__ == '__main__':
             print("FW:", FW := pid_dict.get("FW"))
             # print("GUI:", GUI := pid_dict.get("GUI"))
             print("CSW:", CSW := pid_dict.get("CSW"))
-            time.sleep(1)
+            time.sleep(5)
             break
         except Exception as e:
             print(e)
