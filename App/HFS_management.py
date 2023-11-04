@@ -389,7 +389,7 @@ def tk_setup(
                     url_list.append("about:blank")
         logging.info(f"Skip_scan:{str(skip_scan)}")
 
-        HFS_parameter = str(config["HFS"]["parameter"])
+        HFS_parameter = f"--port {http_port} {config['HFS']['parameter']}"
         logging.info(f"Parameter={str(HFS_parameter)}")
 
         # Console preparation
