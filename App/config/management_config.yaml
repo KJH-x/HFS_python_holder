@@ -1,6 +1,6 @@
 # HFS_management config
 HFS:
-  parameter: "--port 8080"
+  parameter: ""
 
 GUI:
   name: HFS_M
@@ -13,7 +13,7 @@ GUI:
     1: None
     2: None
     3: None
-  port: 8080
+  port: 80
   # ONLY IF you are NOT using LAN and disable DHCP you can modify options above
   # Remember NOT to add the port number at the end of the address
 
